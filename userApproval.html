@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Approval</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <style>
+        .user-details-modal {
+            max-width: 600px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 class="text-center mt-4 mb-4">User Approval</h1>
+
+    <div class="container">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userDetailsModalLabel">User Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDoc, getDocs, updateDoc, doc, query, where, setDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtsO3DH85nLd8S3MGE_kiHT6wAAQtt6Tc",
+            authDomain: "evoting-ace03.firebaseapp.com",
+            projectId: "evoting-ace03",
+            storageBucket: "evoting-ace03.appspot.com",
+            messagingSenderId: "969827913488",
+            appId: "1:969827913488:web:b75c2791835f7bcd6adf95",
+            measurementId: "G-R06X2LP76Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function populateUserTable() {
+            const userTableBody = document.getElementById('userTableBody');
+            userTableBody.innerHTML = '';
+
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where("status", "==", false));
+            const snapshot = await getDocs(q);
+
+            snapshot.forEach(doc => {
+                const userData = doc.data();
+                const tr = document.createElement('tr');
+                console.log(userData)
+                tr.innerHTML = `
+                    <td>${userData.name}</td>
+                    <td>${userData.email}</td>
+                    <td>${userData.status ? 'Approved' : 'Pending'}</td>
+                    <td>
+                        <button class="btn btn-success approveBtn" data-user-id="${doc.id}">Approve</button>
+                        <button class="btn btn-primary viewDetailsBtn" data-user-id="${doc.id}">View Details</button>
+                    </td>
+                `;
+                userTableBody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.approveBtn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    
+                    const userId = button.getAttribute('data-user-id');
+                    const confirmed = window.confirm('Are you sure you want to approve this user?');
+                    if (confirmed) {
+
+                    try {
+                        await updateDoc(doc(usersRef, userId), {
+                            status: true
+                        });
+                        alert('User approved successfully!');
+                        populateUserTable();
+
+
+                        const partyCounterRef = doc(db, 'userCounter', 'userNumber');
+                        const partyCounterSnapshot = await getDoc(partyCounterRef);
+
+                        if (partyCounterSnapshot.exists()) {
+                            await updateDoc(partyCounterRef, {
+                                count: increment(1)
+                            });
+                        } else {
+                            await setDoc(partyCounterRef, { count: 1 });
+                        }
+                    } catch (error) {
+                        console.error('Error approving user:', error.message);
+                        alert('Error approving user: ' + error.message);
+                    }
+                    }
+                });
+            });
+
+            document.querySelectorAll('.viewDetailsBtn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const userId = button.getAttribute('data-user-id');
+                    console.log(userId)
+                    const userDoc = await getDoc(doc(collection(db, 'users'), userId));
+                    console.log(userDoc.data())
+                    const userData = userDoc.data();
+
+                    const userDetailsModal = new bootstrap.Modal(document.getElementById('userDetailsModal'), {
+                        keyboard: false
+                    });
+                    const modalBody = document.querySelector('.modal-body');
+                    modalBody.innerHTML = `
+                        <p><strong>Name:</strong> ${userData.name}</p>
+                        <p><strong>Email:</strong> ${userData.email}</p>
+                        <p><strong>Status:</strong> ${userData.status ? 'Approved' : 'Pending'}</p>
+                        <p><strong>Phone:</strong> ${userData.phone}</p>
+                        <p><strong>Telephone:</strong> ${userData.telephone}</p>
+                        <p><strong>State:</strong> ${userData.state}</p>
+                        <p><strong>City:</strong> ${userData.city}</p>
+                        <p><strong>Area:</strong> ${userData.area}</p>
+                        <p><strong>Date of Birth:</strong> ${userData.dob}</p>
+                        <p><strong>Father's Name:</strong> ${userData.fatherName}</p>
+                        <p><strong>Mother's Name:</strong> ${userData.motherName}</p>
+                        <p><strong>Grandfather's Name:</strong> ${userData.grandfatherName}</p>
+                        <p><strong>ID Type:</strong> ${userData.idType}</p>
+                        <p><strong>ID Document URL:</strong> ${userData.idDocumentUrl}</p>
+                    `;
+
+                    userDetailsModal.show();
+                });
+            });
+        }
+
+        populateUserTable();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
+        integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
+        crossorigin="anonymous"></script>
+
+</body>
+
+</html>

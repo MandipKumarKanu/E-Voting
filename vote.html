@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-4">Vote</h1>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">Party Name</th>
+                    <th scope="col">Party Logo</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody id="partyList">
+
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, increment, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtsO3DH85nLd8S3MGE_kiHT6wAAQtt6Tc",
+            authDomain: "evoting-ace03.firebaseapp.com",
+            projectId: "evoting-ace03",
+            storageBucket: "evoting-ace03.appspot.com",
+            messagingSenderId: "969827913488",
+            appId: "1:969827913488:web:b75c2791835f7bcd6adf95",
+            measurementId: "G-R06X2LP76Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function fetchAndDisplayParties() {
+            const partyListBody = document.getElementById('partyList');
+            partyListBody.innerHTML = '';
+            try {
+                const querySnapshot = await getDocs(collection(db, "parties"));
+                querySnapshot.forEach(async (docI) => {
+                    const partyData = docI.data();
+                    const partyTableRow = document.createElement('tr');
+                    const voteButton = document.createElement('button');
+                    voteButton.innerText = 'Vote';
+                    const electionId = new URLSearchParams(window.location.search).get('electionId');
+                    const uid = localStorage.getItem('uid');
+                    const voteSummaryRef = doc(collection(db, 'voteSummary'), electionId);
+                    const voteSummarySnapshot = await getDoc(voteSummaryRef);
+                    const actionCell = document.createElement('td');
+                    actionCell.classList.add('action');
+                    if (voteSummarySnapshot.exists() && voteSummarySnapshot.data()[uid]) {
+                        const votedLabel = document.createElement('span');
+                        votedLabel.innerText = 'Voted';
+                        actionCell.appendChild(votedLabel);
+                    } else {
+                        voteButton.addEventListener('click', async () => {
+                            await vote(docI.id);
+                            voteButton.style.display = 'none';
+                            const votedLabel = document.createElement('span');
+                            votedLabel.innerText = 'Voted';
+                            actionCell.innerHTML = '';
+                            actionCell.appendChild(votedLabel);
+                        });
+                        actionCell.appendChild(voteButton);
+                    }
+                    partyTableRow.innerHTML = `
+                            <td>${partyData.partyName}</td>
+                            <td><img src="${partyData.partyLogoUrl}" alt="${partyData.partyName}" style="max-width: 100px;"></td>
+                        `;
+                    partyTableRow.appendChild(actionCell);
+                    partyListBody.appendChild(partyTableRow);
+                });
+            } catch (error) {
+                console.error("Error fetching parties: ", error);
+            }
+        }
+
+        async function vote(partyId) {
+            const electionId = new URLSearchParams(window.location.search).get('electionId');
+            if (!electionId) {
+                console.error('Election ID not found in URL parameter');
+                return;
+            }
+            try {
+                const uid = localStorage.getItem('uid');
+                if (!uid) {
+                    console.error('User ID not found');
+                    return;
+                }
+                await setDoc(doc(db, 'voteSummary', electionId), {
+                    [uid]: true
+                }, { merge: true });
+
+                const voteCountRef = doc(db, 'voteCounter', electionId, 'votes', partyId);
+                const voteCountRef1 = doc(db, 'voteCounter', electionId)
+                await setDoc(voteCountRef1, { count: 1 });
+
+                const voteCountSnapshot = await getDoc(voteCountRef);
+                if (voteCountSnapshot.exists()) {
+                    await updateDoc(voteCountRef, {
+                        count: increment(1)
+                    });
+                } else {
+                    await setDoc(voteCountRef, { count: 1 });
+                }
+
+                alert('Vote submitted successfully!');
+                window.location.reload();
+            } catch (error) {
+                console.error("Error submitting vote: ", error);
+            }
+        }
+
+        fetchAndDisplayParties();
+
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Signup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        form {
+            max-width: 600px;
+            margin: 20px auto;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>User Signup</h1>
+
+    <form id="signupForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" required>
+
+        <label for="phone">Phone:</label>
+        <input type="tel" id="phone" required>
+
+        <label for="telephone">Telephone:</label>
+        <input type="tel" id="telephone">
+
+        <label for="state">State:</label>
+        <input type="text" id="state" required>
+
+        <label for="city">City:</label>
+        <input type="text" id="city" required>
+
+        <label for="area">Area:</label>
+        <input type="text" id="area" required>
+
+        <label for="dob">Date of Birth:</label>
+        <input type="date" id="dob" required>
+
+        <label for="fatherName">Father's Name:</label>
+        <input type="text" id="fatherName" required>
+
+        <label for="motherName">Mother's Name:</label>
+        <input type="text" id="motherName" required>
+
+        <label for="grandfatherName">Grandfather's Name:</label>
+        <input type="text" id="grandfatherName" required>
+
+        <label for="idType">ID Type:</label>
+        <select id="idType">
+            <option value="NID">NID</option>
+            <option value="Driving License">Driving License</option>
+            <option value="Citizenship">Citizenship</option>
+        </select>
+
+        <label for="idDocument">Upload ID Document:</label>
+        <input type="file" id="idDocument" accept="image/*" required>
+
+        <button type="button" id="signupBtn">Signup</button>
+    </form>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtsO3DH85nLd8S3MGE_kiHT6wAAQtt6Tc",
+            authDomain: "evoting-ace03.firebaseapp.com",
+            projectId: "evoting-ace03",
+            storageBucket: "evoting-ace03.appspot.com",
+            messagingSenderId: "969827913488",
+            appId: "1:969827913488:web:b75c2791835f7bcd6adf95",
+            measurementId: "G-R06X2LP76Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth();
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        document.getElementById('signupBtn').addEventListener('click', async () => {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const phone = document.getElementById('phone').value;
+            const telephone = document.getElementById('telephone').value;
+            const state = document.getElementById('state').value;
+            const city = document.getElementById('city').value;
+            const area = document.getElementById('area').value;
+            const dob = document.getElementById('dob').value;
+            const fatherName = document.getElementById('fatherName').value;
+            const motherName = document.getElementById('motherName').value;
+            const grandfatherName = document.getElementById('grandfatherName').value;
+            const idType = document.getElementById('idType').value;
+            const idDocumentFile = document.getElementById('idDocument').files[0];
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                const idDocumentRef = ref(storage, `idDocuments/${user.uid}`);
+                await uploadBytes(idDocumentRef, idDocumentFile);
+
+                const idDocumentUrl = await getDownloadURL(idDocumentRef);
+
+                const formData = {
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    telephone: telephone,
+                    state: state,
+                    city: city,
+                    area: area,
+                    dob: dob,
+                    fatherName: fatherName,
+                    motherName: motherName,
+                    grandfatherName: grandfatherName,
+                    idType: idType,
+                    idDocumentUrl: idDocumentUrl,
+
+                }
+
+                const userDataCollection = collection(db, "users");
+                await setDoc(doc(userDataCollection, user.uid), {
+                    ...formData,
+                    status: false
+                });
+
+                alert('User signup successful! Status');
+            } catch (error) {
+                console.error('Error signing up:', error.message);
+                alert('Error signing up: ' + error.message);
+            }
+        });
+    </script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 16px;
+            margin: 8% auto;
+            width: 50%;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input[type=text],
+        input[type=password] {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        hr {
+            border: 1px solid #f1f1f1;
+            margin-bottom: 25px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        a {
+            color: dodgerblue;
+        }
+    </style>
+</head>
+
+<body>
+    <form>
+        <div class="container">
+            <h1>Login</h1>
+            <p>Please fill in this form to log in to your account.</p>
+            <hr>
+
+            <label for="loginEmail"><b>Email</b></label>
+            <input type="text" placeholder="Enter Email" name="loginEmail" id="loginEmail" />
+
+            <label for="loginPsw"><b>Password</b></label>
+            <input type="password" placeholder="Enter Password" name="loginPsw" id="loginPsw" />
+            <hr>
+
+            <button type="button" id="loginBtn" name="loginBtn" class="loginbtn">Login</button>
+        </div>
+    </form>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtsO3DH85nLd8S3MGE_kiHT6wAAQtt6Tc",
+            authDomain: "evoting-ace03.firebaseapp.com",
+            projectId: "evoting-ace03",
+            storageBucket: "evoting-ace03.appspot.com",
+            messagingSenderId: "969827913488",
+            appId: "1:969827913488:web:b75c2791835f7bcd6adf95",
+            measurementId: "G-R06X2LP76Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth();
+        const db = getFirestore();
+
+        document.getElementById("loginBtn").addEventListener('click', async (e) => {
+            var email = document.getElementById('loginEmail').value;
+            var password = document.getElementById('loginPsw').value;
+
+            try {
+                const response = await signInWithEmailAndPassword(auth, email, password);
+                console.log(response);
+                const userDoc = await getDoc(doc(db, "users", response.user.uid));
+                if (userDoc.exists()) {
+                    const userDetails = userDoc.data();
+                    console.log("User Details:", userDetails);
+                    localStorage.setItem("userDetails", JSON.stringify(userDetails));
+                    // alert("Login Done");
+                    window.location.href = "./dashboard.html"
+                } else {
+                    alert("User details not found.");
+                }
+            } catch (error) {
+                alert("Error during login: " + error.message);
+            }
+        });
+    </script>
+</body>
+
+</html>

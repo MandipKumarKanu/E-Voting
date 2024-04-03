@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Voting System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        form {
+            max-width: 400px;
+            margin: 20px 0;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Add Party</h1>
+
+    <form id="partyForm">
+        <label for="partyName">Party Name:</label>
+        <input type="text" id="partyName" required>
+
+        <label for="partyLogo">Party Logo:</label>
+        <input type="file" id="partyLogo" accept="image/*" required>
+
+        <label for="idCard">ID Card (Optional):</label>
+        <input type="file" id="idCard" accept="image/*">
+
+        <label for="otherDocument">Other Document (Optional):</label>
+        <input type="file" id="otherDocument" accept="image/*">
+
+        <button type="button" id="addPartyBtn">Add Party</button>
+    </form>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, increment, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtsO3DH85nLd8S3MGE_kiHT6wAAQtt6Tc",
+            authDomain: "evoting-ace03.firebaseapp.com",
+            projectId: "evoting-ace03",
+            storageBucket: "evoting-ace03.appspot.com",
+            messagingSenderId: "969827913488",
+            appId: "1:969827913488:web:b75c2791835f7bcd6adf95",
+            measurementId: "G-R06X2LP76Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        async function addParty() {
+    const partyName = document.getElementById('partyName').value;
+    const partyLogoFile = document.getElementById('partyLogo').files[0];
+    const idCardFile = document.getElementById('idCard').files[0];
+    const otherDocumentFile = document.getElementById('otherDocument').files[0];
+
+    if (!partyName || !partyLogoFile) {
+        alert('Please fill in all the fields.');
+        return;
+    }
+
+    try {
+        const logoStorageRef = ref(storage, `partyLogos/${partyLogoFile.name}`);
+        await uploadBytes(logoStorageRef, partyLogoFile);
+        const logoUrl = await getDownloadURL(logoStorageRef);
+
+        let idCardUrl = "";
+        if (idCardFile) {
+            const idCardStorageRef = ref(storage, `partyDocuments/${idCardFile.name}`);
+            await uploadBytes(idCardStorageRef, idCardFile);
+            idCardUrl = await getDownloadURL(idCardStorageRef);
+        }
+
+        let otherDocumentUrl = "";
+        if (otherDocumentFile) {
+            const otherDocumentStorageRef = ref(storage, `partyDocuments/${otherDocumentFile.name}`);
+            await uploadBytes(otherDocumentStorageRef, otherDocumentFile);
+            otherDocumentUrl = await getDownloadURL(otherDocumentStorageRef);
+        }
+
+        // Add party details to Firestore and capture the document reference
+        const docRef = await addDoc(collection(db, 'parties'), {
+            partyName: partyName,
+            partyLogoUrl: logoUrl,
+            idCardUrl: idCardUrl,
+            otherDocumentUrl: otherDocumentUrl
+        });
+
+        // Get the document ID from the added document reference
+        const docId = docRef.id;
+
+        // Add the document ID as a field in the document
+        await updateDoc(doc(db, 'parties', docId), {
+            id: docId
+        });
+
+        const partyCounterRef = doc(db, 'partyCounter', 'partyNumber');
+        const partyCounterSnapshot = await getDoc(partyCounterRef);
+
+        if (partyCounterSnapshot.exists()) {
+            await updateDoc(partyCounterRef, {
+                count: increment(1)
+            });
+        } else {
+            await setDoc(partyCounterRef, { count: 1 });
+        }
+
+        clearForm();
+        alert('Party added successfully!');
+
+    } catch (error) {
+        console.error('Error adding party to Firestore:', error);
+    }
+}
+
+        function clearForm() {
+            document.getElementById('partyName').value = '';
+            document.getElementById('partyLogo').value = '';
+        }
+
+        document.getElementById('addPartyBtn').addEventListener('click', addParty);
+
+    </script>
+
+</body>
+
+</html>
